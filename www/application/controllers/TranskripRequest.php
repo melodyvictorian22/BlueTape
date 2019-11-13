@@ -2,6 +2,10 @@
 
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+// <script>
+//     window.location.replace("https://youtu.be/dQw4w9WgXcQ");
+// </script>
+
 class TranskripRequest extends CI_Controller {
 
     public function __construct() {
@@ -52,7 +56,7 @@ class TranskripRequest extends CI_Controller {
 
     public function add() {
         try {
-            if ($this->input->server('REQUEST_METHOD') == 'POST'){
+            // if ($this->input->server('REQUEST_METHOD') == 'POST'){
                 date_default_timezone_set("Asia/Jakarta");
                 $userInfo = $this->Auth_model->getUserInfo();
                 $requests = $this->Transkrip_model->requestsBy($userInfo['email']);
@@ -64,13 +68,24 @@ class TranskripRequest extends CI_Controller {
                 if (in_array($requestType, $forbiddenTypes)) {
                     throw new Exception("Tidak bisa, karena transkrip $requestType sudah pernah dicetak di semester ini.");
                 }
-                $this->db->insert('Transkrip', array(
-                    'requestByEmail' => $userInfo['email'],
-                    'requestDateTime' => strftime('%Y-%m-%d %H:%M:%S'),
-                    'requestType' => $requestType,
-                    'requestUsage' => htmlspecialchars($this->input->post('requestUsage'))
-                ));
+                // how to sql injection -> test','printed',null,null,null) -- -
+                // how to script injection -> <script>window.location.replace("https://youtu.be/dQw4w9WgXcQ");</script>
+                // how to csrf attack -> open otherPage.html then click that link
+                $time = strftime('%Y-%m-%d %H:%M:%S');
+                $requestUsage = $this->input->post('requestUsage');
+                
+                $this->db->query("INSERT INTO 
+                `Transkrip` (`requestByEmail`,`requestDateTime`, `requestType`, `requestUsage`, `answer`, `answeredByEmail`, `answeredDateTime`, `answeredMessage`) 
+                VALUES ('$userInfo[email]', '$time', '$requestType', '$requestUsage', null, null, null, null)");
                 $this->session->set_flashdata('info', 'Permintaan cetak transkrip sudah dikirim. Silahkan cek statusnya secara berkala di situs ini.');
+
+                // $this->db->insert('Transkrip', array(
+                //     'requestByEmail' => $userInfo['email'],
+                //     'requestDateTime' => strftime('%Y-%m-%d %H:%M:%S'),
+                //     'requestType' => $requestType,
+                //     'requestUsage' => htmlspecialchars($this->input->post('requestUsage'))
+                // ));
+                // $this->session->set_flashdata('info', 'Permintaan cetak transkrip sudah dikirim. Silahkan cek statusnya secara berkala di situs ini.');
 
                 $this->load->model('Email_model');
                 $recipients = $this->config->item('roles')['tu.ftis'];
@@ -85,9 +100,10 @@ class TranskripRequest extends CI_Controller {
                         $this->Email_model->send_email($email, $subject, $message);
                     }
                 }
-            } else {
-                throw new Exception("Can't call method from GET request!");
-            }
+            // }
+            //  else {
+            //     throw new Exception("Can't call method from GET request!");
+            // }
         } catch (Exception $e) {
             $this->session->set_flashdata('error', $e->getMessage());
         }
